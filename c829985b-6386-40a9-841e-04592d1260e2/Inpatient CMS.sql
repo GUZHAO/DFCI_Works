@@ -1,4 +1,5 @@
 --Inpatient CMS Project
+--Add inpatient outpatient indicator
 SELECT
   t4.MRN                  AS DFCI_MRN,
   t1.PatientID            AS Patient_ID,

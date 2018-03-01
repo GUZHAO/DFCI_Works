@@ -19,33 +19,4 @@ WHERE
   AND EXTRACT(YEAR FROM t1.SVC_DTTM) = 2017
   AND EXTRACT(MONTH FROM t1.SVC_DTTM) = 12
   AND t1.CPT IN ('99205')
-
-
-  SELECT
-    PO.PT_ID,
-    PO.CT_PROV_ID,
-    MD.PROV_NM,
-    MD.PROV_DX_GRP_DV,
-    t3.ENC_APPT_DTTM,
-    t3.ENC_DEPT_DESCR,
-    t3.ENC_STATUS_DESCR,
-    t3.ENC_ID_CSN,
-    t3.ENC_VIS_TYP_DESCR,
-    t2.PT_DFCI_MRN
-  FROM dart_ods.MV_COBA_PT_ENC t3
-    LEFT JOIN (
-                SELECT
-                  CT.CT_PT_ID     AS PT_ID,
-                  MAX(CT_PROV_ID) AS CT_PROV_ID
-                FROM
-                  DART_ODS.MV_COBA_PT_CARE_TEAM CT
-                WHERE
-                  CT_PROV_ROLE_DESCR = 'PRIMARY ONCOLOGIST'
-                  AND CT.CT_PROV_DEL_IND <> 'Y'
-                  AND CT.CT_PROV_HX_CMNT_TXT LIKE 'DFCI%' --Will this remove BWH referrals?
-                GROUP BY CT.CT_PT_ID
-              ) PO ON t3.PT_ID = PO.PT_ID
-    LEFT JOIN DART_ODS.MV_COBA_PROV MD ON MD.PROV_ID = PO.CT_PROV_ID
-    LEFT JOIN dart_ods.MV_COBA_PT t2 ON t3.PT_ID = t2.PT_ID
-  WHERE EXTRACT(YEAR FROM t3.ENC_APPT_DTTM) > 2016
-        AND t3.ENC_DEPT_DESCR IN ('DF PALLIATIVE CARE', 'DF PSYCH ONC')
+;
