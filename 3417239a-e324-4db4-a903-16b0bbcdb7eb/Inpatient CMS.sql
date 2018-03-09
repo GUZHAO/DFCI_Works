@@ -1,21 +1,23 @@
---Inpatient CMS Project
---Add inpatient outpatient indicator
 SELECT
-  t4.MRN                  AS DFCI_MRN,
-  t1.PatientID            AS Patient_ID,
-  t1.PatientEncounterID   AS Encounter_ID,
-  t2.HospitalAccountID,
-  t3.PatientNM            AS PatientName,
-  t2.DepartmentDSC        AS Department_Name,
-  t2.HospitalAdmitDTS     AS Admission_DTS,
-  t2.HospitalDischargeDTS AS Discharge_DTS,
-  t1.StartDTS             AS Procedure_Start_DTS,
-  t1.EndDTS               AS Procedure_End_DTS,
-  t1.ProcedureDSC         AS Procedure_Name,
+  t3.PT_DFCI_MRN          AS DFCI_MRN,
+  t3.PT_BWH_MRN           AS BWH_MRN,
+  t1.PT_ID            AS Patient_ID,
+  t1.PT_ENC_ID   AS Encounter_ID,
+  t3.PT_LAST_NM || t3.PT_FIRST_NM            AS PatientName,
+  t1.ORD_MODE_DESCR      AS PatientType,
+  t2.DEPT_DESCR        AS Department_Name,
+  t2.HOSP_ADMIT_DTTM     AS Admission_DTS,
+  t2.HOSP_DISCHG_DTTM AS Discharge_DTS,
+  t1.START_DTTM             AS Procedure_Start_DTS,
+  t1.END_DTTM               AS Procedure_End_DTS,
+  t1.PROC_DESCR         AS Procedure_Name,
   t1.CPT                  AS CPT_Name,
-  t1.DiagnosisTest,
+  t3.D,
   t6.ScannedDTS,
+  t6.ConsentFormUsed,
   t6.ConsentFlag,
+  t7.ContactDTS           AS Curr_MedicationDTS,
+  t7.CurrentMedication,
   t8.HPFlag,
   t8.ServiceDTS           AS HP_ServiceDTS,
   t9.OPNoteFlag,
@@ -27,60 +29,66 @@ SELECT
   t11.EntryTimeDTS        AS Airway_EntryDTS,
   t12.EntryTimeDTS        AS Complication_EntryDTS
 FROM (
-       SELECT DISTINCT
-         tt1.PatientID,
-         tt1.PatientEncounterID,
-         tt1.OrderDTS,
-         tt1.StartDTS,
-         tt1.EndDTS,
-         tt1.ProcedureCD,
-         tt1.ProcedureDSC,
+       SELECT
+         tt1.PT_ID,
+         tt1.PT_ENC_ID,
+         tt1.ORD_DTTM,
+         tt1.START_DTTM,
+         tt1.END_DTTM,
+         tt1.PROC_DESCR,
          tt1.CPT,
-         tt2.DiagnosisTest
-       FROM Epic.Orders.Procedure_DFCI tt1
-         LEFT JOIN (SELECT
-                      t1.PatientEncounterID,
-                      CASE WHEN t1.ProcedureDSC LIKE '%EKG%' OR
-                                t1.ProcedureDSC LIKE '%TTE%' OR
-                                t1.ProcedureDSC LIKE '%CATHETERIZATION%' OR
-                                t1.ProcedureDSC LIKE '%PULMONARY%FUNCTION%TEST%' OR
-                                t1.ProcedureDSC LIKE '%XR%CHEST%'
-                        THEN 'Y'
-                      ELSE 'N' END AS DiagnosisTest
-                    FROM Epic.Orders.Procedure_DFCI t1
-                   ) tt2 ON tt1.PatientEncounterID = tt2.PatientEncounterID
-       WHERE tt1.PatientEncounterID IS NOT NULL
+         tt2.ORD_MODE_DESCR
+       FROM DART_ODS.ODS_EDW_ORD_PROC tt1
+          LEFT JOIN DART_ODS.ODS_EDW_ORD_PROC_03 tt2 ON tt1.ORD_PROC_ID = tt2.ORD_ID
+       WHERE tt1.PT_ENC_ID IS NOT NULL
      ) t1
   LEFT JOIN (
               SELECT DISTINCT
-                tt1.PatientEncounterID,
-                tt1.DepartmentDSC,
-                tt1.HospitalAdmitDTS,
-                tt1.HospitalDischargeDTS,
-                tt1.HospitalAccountID
-              FROM Epic.Encounter.PatientEncounterHospital_DFCI tt1
+                tt1.PT_ENC_ID,
+                tt1.DEPT_DESCR,
+                tt1.HOSP_ADMIT_DTTM,
+                tt1.HOSP_DISCHG_DTTM
+              FROM DART_ODS.ODS_EDW_ENC_PT_ENC_HOSP tt1
             ) t2
-    ON t1.PatientEncounterID = t2.PatientEncounterID
-  LEFT JOIN Epic.Patient.Patient_DFCI t3
-    ON t1.PatientID = t3.PatientID
+    ON t1.PT_ENC_ID = t2.PT_ENC_ID
+  LEFT JOIN DART_ODS.MV_COBA_PT_ENC t3
+    ON t1.PT_ENC_ID = t3.ENC_ID_CSN
   LEFT JOIN (
-              SELECT
-                tt2.EDWPatientID,
-                tt2.MRN
-              FROM Integration.EMPI.MRN_DFCI tt2
-              WHERE tt2.StatusCD = 'A'
-            ) t4
-    ON t3.EDWPatientID = t4.EDWPatientID
+              SELECT DISTINCT
+                t1.PatientID,
+                t1.DiagnosisEntryDTS
+              FROM Epic.Patient.ProblemList_DFCI t1
+            ) t5
+    ON t1.PatientID = t5.PatientID AND CAST(t1.StartDTS AS DATE) = t5.DiagnosisEntryDTS
   LEFT JOIN (
               SELECT DISTINCT
                 t1.ScannedDTS,
                 t1.PatientEncounterID,
+                CASE WHEN t1.DocumentCreatedDepartmentDSC LIKE '%DF%'
+                  THEN 'DFCI'
+                WHEN t1.DocumentCreatedDepartmentDSC LIKE '%BWP%'
+                  THEN 'BWP'
+                WHEN t1.DocumentCreatedDepartmentDSC LIKE '%BWH%'
+                  THEN 'BWH'
+                WHEN t1.DocumentCreatedDepartmentDSC LIKE '%BWF%'
+                  THEN 'BWF'
+                ELSE 'OTHER'
+                END AS ConsentFormUsed,
                 'Y' AS ConsentFlag
               FROM Epic.Encounter.DocumentInformation_DFCI t1
               WHERE
                 t1.DocumentTypeCD = '110017'
             ) t6
-    ON t1.PatientEncounterID = t6.PatientEncounterID
+    ON t1.PatientEncounterID = t6.PatientEncounterID AND CAST(t1.StartDTS AS DATE) = CAST(t6.ScannedDTS AS DATE)
+  LEFT JOIN (
+              SELECT DISTINCT
+                t1.PatientEncounterID,
+                'Y' AS CurrentMedication,
+                t1.ContactDTS
+              FROM Epic.Encounter.CurrentMedication_DFCI t1
+              WHERE t1.IsActiveFLG = 'Y'
+            ) t7
+    ON t1.PatientEncounterID = t7.PatientEncounterID AND CAST(t1.StartDTS AS DATE) = CAST(t7.ContactDTS AS DATE)
   LEFT JOIN (
               SELECT
                 t1.PatientEncounterID,
@@ -125,19 +133,16 @@ FROM (
               SELECT DISTINCT
                 t2.PatientID,
                 t1.EntryTimeDTS,
-                'Y' AS ComplicationAdverseFlag,
-                t3.FlowsheetMeasureNM
+                'Y' AS ComplicationAdverseFlag
               FROM Epic.Clinical.FlowsheetMeasure_DFCI t1
                 LEFT JOIN Epic.Clinical.FlowsheetRecordLink_DFCI t2 ON t1.FlowsheetDataID = t2.FlowsheetDataID
                 LEFT JOIN Epic.Clinical.FlowsheetGroup_DFCI t3 ON t1.FlowsheetMeasureID = t3.FlowsheetMeasureID
               WHERE t1.IsAcceptedFLG = 'Y' AND
                     (t3.FlowsheetMeasureNM LIKE '%COMPLICATIONS%' OR t3.FlowsheetMeasureNM LIKE '%ADVERSE%')
             ) t12 ON t1.PatientID = t12.PatientID AND CAST(t1.StartDTS AS DATE) = CAST(t12.EntryTimeDTS AS DATE)
-  LEFT JOIN Finance.HospitalAccountDRG_DFCI t13 ON t2.HospitalAccountID = t13.HospitalAccountID
-  LEFT JOIN Reference.DRG t14 ON t13.DRGRecordID = t14.DRGRecordID
 WHERE
   t1.PatientID IN (
     SELECT a1.PatientID
     FROM Epic.Encounter.PatientEncounterHospital_DFCI a1
     WHERE a1.DepartmentID IN (10030010022, 10030010024, 10030010026)
-  ) AND YEAR(t2.HospitalAdmitDTS) >= 2017;
+  ) AND YEAR(t2.HospitalAdmitDTS) >= 2017
