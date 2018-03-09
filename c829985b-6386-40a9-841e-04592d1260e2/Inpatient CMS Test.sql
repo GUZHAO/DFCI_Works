@@ -42,23 +42,6 @@ SELECT COUNT(t1.Patient_ID) AS CNT FROM (
 ) t1
 ;
 
-SELECT
-  t1.*
-  FROM Orders.Medication_DFCI t1
-WHERE t1.PatientEncounterID = 3187614350
-
-SELECT
-  t1.*
-  FROM Encounter.CurrentMedication_DFCI t1
-WHERE t1.PatientID = 'Z15435979'
-
-
-              SELECT DISTINCT
-                t1.InpatientNoteTypeDSC
-              FROM Epic.Clinical.Note_DFCI t1
-
-
-
 SELECT t1.* FROM (
   SELECT
     t4.MRN                  AS DFCI_MRN,
@@ -129,12 +112,6 @@ SELECT t1.* FROM (
 WHERE t1.Department_Name LIKE 'DF%' OR
       t1.Department_Name LIKE 'BWH%'
 ;
-
-SELECT DISTINCT
-                t1.DocumentTypeCD,
-                t1.DocumentTypeDSC
-              FROM Epic.Encounter.DocumentInformation_DFCI t1
-
 
 
 SELECT
