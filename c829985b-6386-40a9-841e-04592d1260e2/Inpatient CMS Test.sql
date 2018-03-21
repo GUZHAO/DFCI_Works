@@ -172,39 +172,21 @@ WHERE
     WHERE a1.DepartmentID IN (10030010022, 10030010024, 10030010026)
   ) AND YEAR(t2.HospitalAdmitDTS) >= 2017
 
+SELECT DISTINCT t1.ProcedureDSC
+FROM Epic.Orders.Procedure_DFCI t1
+  LEFT JOIN Epic.Orders.Procedure3_DFCI t2 ON t1.OrderProcedureID = t2.OrderID
+WHERE t2.OrderingModeDSC = 'Inpatient' AND (t1.ProcedureDSC LIKE '%EKG%' OR
+                                            t1.ProcedureDSC LIKE '%ECG%' OR
+                                            t1.ProcedureDSC LIKE '%ELECTROCARDIOGRAM%' OR
+                                            t1.ProcedureDSC LIKE '%TTE%' OR
+                                            t1.ProcedureDSC LIKE '%CATHETERIZATION%' OR
+                                            t1.ProcedureDSC LIKE '%PULMONARY%FUNCTION%TEST%' OR
+                                            t1.ProcedureDSC LIKE '%XR%CHEST%')
 
-SELECT DISTINCT
-  t1.PatientID,
-  t1.MedicationListReviewCSNID,
-  CAST(CAST(t1.MedicationListReviewDTS AS DATE) AS DATETIME2) AS MedicationListreviewDate
-FROM Clinical.MedicationReviewHistory_DFCI t1
-WHERE t1.PatientID = 'Z10000013'
 
-SELECT DISTINCT
-  tt1.PatientID,
-  tt1.PatientEncounterID,
-  tt1.OrderDTS,
-  tt1.StartDTS,
-  tt1.EndDTS,
-  tt1.ProcedureCD,
-  tt1.ProcedureDSC,
-  tt1.CPT
-FROM Epic.Orders.Procedure_DFCI tt1
-WHERE tt1.PatientID = 'Z10000013'
-
---check consult note
-             SELECT DISTINCT
-                t1.InpatientNoteTypeDSC
-              FROM Epic.Clinical.Note_DFCI t1
-              WHERE t1.InpatientNoteTypeDSC LIKE '%Consults%'
-
-            SELECT DISTINCT
-                t2.PatientID,
-                CAST(t1.EntryTimeDTS AS DATE) AS EntryDTS,
-                'Y'                           AS ComplicationAdverseFlag,
-                t3.FlowsheetMeasureNM
-              FROM Epic.Clinical.FlowsheetMeasure_DFCI t1
-                LEFT JOIN Epic.Clinical.FlowsheetRecordLink_DFCI t2 ON t1.FlowsheetDataID = t2.FlowsheetDataID
-                LEFT JOIN Epic.Clinical.FlowsheetGroup_DFCI t3 ON t1.FlowsheetMeasureID = t3.FlowsheetMeasureID
-              WHERE t1.IsAcceptedFLG = 'Y' AND
-                    (t3.FlowsheetMeasureNM LIKE '%AN R NPO STATUS%')
+SELECT DISTINCT t3.FlowsheetMeasureNM
+FROM Epic.Clinical.FlowsheetMeasure_DFCI t1
+  LEFT JOIN Epic.Clinical.FlowsheetRecordLink_DFCI t2 ON t1.FlowsheetDataID = t2.FlowsheetDataID
+  LEFT JOIN Epic.Clinical.FlowsheetGroup_DFCI t3 ON t1.FlowsheetMeasureID = t3.FlowsheetMeasureID
+WHERE t1.IsAcceptedFLG = 'Y' AND
+      (t3.FlowsheetMeasureNM LIKE '%COMPLICATIONS%' OR t3.FlowsheetMeasureNM LIKE '%ADVERSE%')

@@ -58,9 +58,20 @@ SELECT
   s1.TransactionCommentTXT,
   s1.ProcedureDSC,
   s1.EnterprisePaymentTotalAMT,
-  s1.PaymentSourceDSC
+  s1.PaymentSourceDSC,
+  t14.LineNBR,
+  t14.TransactionID AS LineTransaction,
+  t14.LineLevelAllowedAMT,
+  t14.LineLevelAdjustmentAMT,
+  t14.LineLevelBilledAMT,
+  t14.LineLevelCoinsAMT,
+  t14.LineLevelCopayAMT,
+  t14.LineLevelPostedAMT,
+  t14.LineLevelNonCoveredAMT,
+  t14.LineLevelNotAllowedAMT
 FROM Epic.Finance.HospitalTransaction_DFCI s1
-  LEFT JOIN EPIC.Reference.Payor t13 ON s1.PayorID = t13.PayorID
+  LEFT JOIN Epic.Reference.Payor t13 ON s1.PayorID = t13.PayorID
+  LEFT JOIN Epic.Finance.HospitalTransactionLineInformation_DFCI t14 ON s1.TransactionID = t14.TransactionID
 WHERE s1.HospitalAccountID = 6045675494
 
 SELECT *
@@ -71,12 +82,21 @@ WHERE PatientID = 'Z11274185'
       AND mem.CoverageID = cov.CoverageID
       AND cov.PlanID = pl.BenefitPlanID
 
-SELECT DISTINCT
+
+SELECT
   s1.PatientID,
-  COUNT(s3.BenefitPlanNM) AS CNT
+  s1.CoverageID,
+  s4.PayorNM,
+  s4.LineOfBusinessNM,
+  s3.BenefitPlanNM
   FROM Epic.Finance.CoverageMemberList_DFCI s1
     LEFT JOIN Epic.Finance.Coverage_DFCI s2 ON s1.CoverageID = s2.CoverageID
     LEFT JOIN Epic.Reference.BenefitPlan s3 ON s2.PayorID = s3.PayorID
-GROUP BY s1.PatientID
-ORDER BY CNT DESC
+    LEFT JOIN Epic.Finance.CoveragePayorPlan_DFCI s4 ON s1.CoverageID = s4.CoverageID
+WHERE s1.PatientID = 'Z11274185'
 
+
+SELECT
+  t1.*
+  FROM Epic.Finance.HospitalTransactionLineInformation_DFCI t1
+WHERE t1.HospitalAccountID = 6045675494

@@ -25,6 +25,7 @@ SELECT
   t10.BaselineVitalFlag,
   t11.AirwayFlag,
   t12.ComplicationAdverseFlag,
+  t13.NPOFlag,
   t10.EntryDTS            AS Vital_EntryDTS,
   t11.EntryDTS            AS Airway_EntryDTS,
   t12.EntryDTS            AS Complication_EntryDTS,
@@ -146,7 +147,7 @@ FROM (
               SELECT DISTINCT
                 t2.PatientID,
                 CAST(CAST(t1.EntryTimeDTS AS DATE) AS DATETIME2) AS EntryDTS,
-                'Y'                                              AS ComplicationAdverseFlag,
+                'Y'                                              AS NPOFlag,
                 t3.FlowsheetMeasureNM
               FROM Epic.Clinical.FlowsheetMeasure_DFCI t1
                 LEFT JOIN Epic.Clinical.FlowsheetRecordLink_DFCI t2 ON t1.FlowsheetDataID = t2.FlowsheetDataID
