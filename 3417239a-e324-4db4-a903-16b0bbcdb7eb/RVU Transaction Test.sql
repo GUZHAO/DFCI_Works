@@ -39,6 +39,7 @@ SELECT
   END                      AS patient_nm,
   t6.super_prov_id         AS supervisingprov_id,
   t7.prov_nm               AS supervisingprov_nm,
+  t1.DEPT_ID,
   t1.dept_descr            AS dept_nm,
   t8.place_of_svc_nm       AS place_of_svc_nm,
   t1.proc_id,
@@ -285,9 +286,29 @@ WHERE t1.BILL_PROV_ID = '1014497'
       AND EXTRACT(YEAR FROM t1.SVC_DTTM) = 2017
       AND EXTRACT(MONTH FROM t1.SVC_DTTM) = 12;
 
+SELECT
+  t1.TRANSACT_ID,
+  t1.CPT,
+  t1.PROC_ID,
+  t1.HOSP_ACCT_ID,
+  t1.PT_ENC_ID,
+  t1.ORIG_REVRSE_TRANSACT_ID,
+  t1.ORIG_LATE_CHG_COR_TRANSACT_ID,
+  t1.ORIG_LATE_CHG_CRED_TRANSACT_ID,
+  t1.POST_DTTM,
+  t1.SVC_DTTM,
+  t1.TRANSACT_CNT,
+  t1.TRANSACT_AMT,
+  t1.HOSP_ACCT_CLS_DESCR,
+  t1.BILL_PROV_ID,
+  t1.DEPT_DESCR
+  FROM dart_ods.ods_edw_fin_hosp_transact t1
+WHERE t1.PT_ENC_ID = 3076070427
+--   t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL OR t1.ORIG_LATE_CHG_COR_TRANSACT_ID IS NOT NULL
 
-
-
+SELECT
+T1.*
+  FROM dartedm.D_CLIN_DEPT@dartprd t1
 
 
 SELECT t1.BILL_ATTNDG_PROV_ID
