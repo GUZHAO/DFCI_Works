@@ -114,7 +114,6 @@ FROM dartods.ods_hart_charge_data t1
 
 UNION
 /*Inpatient Post-Epic*/
-
 SELECT
   TO_CHAR(t1.transact_id) AS transaction_id,
   'Inpatient'             AS patienttypeind,
@@ -216,7 +215,6 @@ WHERE t1.BILL_PROV_ID IS NOT NULL
 
 UNION
 /*Outpatient Pre-Epic*/
-
 SELECT
   dps.txn_id              AS transaction_id,
   fps.acct_class_nm       AS patienttypeind,
@@ -343,7 +341,6 @@ WHERE
 
 UNION
 /*Outpatient Post-Epic*/
-
 SELECT
   TO_CHAR(t1.transact_id) AS transaction_id,
   'Outpatient'            AS patienttypeind,

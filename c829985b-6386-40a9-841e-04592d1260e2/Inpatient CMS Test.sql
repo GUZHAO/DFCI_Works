@@ -182,11 +182,3 @@ WHERE t2.OrderingModeDSC = 'Inpatient' AND (t1.ProcedureDSC LIKE '%EKG%' OR
                                             t1.ProcedureDSC LIKE '%CATHETERIZATION%' OR
                                             t1.ProcedureDSC LIKE '%PULMONARY%FUNCTION%TEST%' OR
                                             t1.ProcedureDSC LIKE '%XR%CHEST%')
-
-
-SELECT DISTINCT t3.FlowsheetMeasureNM
-FROM Epic.Clinical.FlowsheetMeasure_DFCI t1
-  LEFT JOIN Epic.Clinical.FlowsheetRecordLink_DFCI t2 ON t1.FlowsheetDataID = t2.FlowsheetDataID
-  LEFT JOIN Epic.Clinical.FlowsheetGroup_DFCI t3 ON t1.FlowsheetMeasureID = t3.FlowsheetMeasureID
-WHERE t1.IsAcceptedFLG = 'Y' AND
-      (t3.FlowsheetMeasureNM LIKE '%COMPLICATIONS%' OR t3.FlowsheetMeasureNM LIKE '%ADVERSE%')
