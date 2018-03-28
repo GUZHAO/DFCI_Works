@@ -1,9 +1,6 @@
 --RUV Outpatient Post-Epic
 SELECT
   TO_CHAR(t1.transact_id)  AS transaction_id,
-  t12.ORIG_REVRSE_TRANSACT_ID,
-  t13.ORIG_LATE_CHG_COR_TRANSACT_ID,
-  t14.ORIG_LATE_CHG_CRED_TRANSACT_ID,
   'Outpatient'             AS patienttypeind,
   t1.cpt                   AS cpt_id,
   t4.cpt_cd_descr          AS cpt_nm,
@@ -45,8 +42,7 @@ SELECT
   t1.proc_id,
   t9.proc_cd,
   t9.proc_nm
-FROM
-  dart_ods.ods_edw_fin_hosp_transact t1
+FROM dart_ods.ods_edw_fin_hosp_transact t1
   LEFT JOIN dart_adm.ds_cpt_adj@dartprd t12 ON t1.proc_id = t12.proc_cd
   LEFT JOIN dart_ods.mv_coba_pt_enc t2 ON t1.pt_enc_id = t2.enc_id_csn
   LEFT JOIN dart_ods.mv_coba_pt t3 ON t2.pt_id = t3.pt_id
@@ -67,18 +63,13 @@ FROM
               WHERE
                 t1.rvu IS NOT NULL
             ) t10 ON
-                    CASE
-                    WHEN t1.proc_id = t12.proc_cd
+                    CASE WHEN t1.proc_id = t12.proc_cd
                       THEN t12.cpt_cd
                     ELSE t1.cpt
                     END
                     = t10.cpt_cd
                     AND
-                    EXTRACT(YEAR FROM t1.svc_dttm) = to_number(substr(
-                                                                   t10.calendar_dim_seq,
-                                                                   1,
-                                                                   4
-                                                               ))
+                    EXTRACT(YEAR FROM t1.svc_dttm) = to_number(substr(t10.calendar_dim_seq, 1, 4))
   LEFT JOIN (
               SELECT
                 prov.epic_prov_id,
@@ -120,29 +111,32 @@ FROM
                     AND
                     EXTRACT(YEAR FROM t1.svc_dttm) = t11.academic_yr
   LEFT JOIN
-  (SELECT
-     t1.ORIG_REVRSE_TRANSACT_ID,
-     t1.CPT
+  (SELECT t1.ORIG_REVRSE_TRANSACT_ID
    FROM dart_ods.ods_edw_fin_hosp_transact t1
    WHERE t1.ORIG_REVRSE_TRANSACT_ID IS NOT NULL
-  ) t12 ON t1.TRANSACT_ID = t12.ORIG_REVRSE_TRANSACT_ID AND t1.CPT = t12.CPT
-  LEFT JOIN
-  (SELECT
-     t1.ORIG_LATE_CHG_COR_TRANSACT_ID,
-     t1.CPT
-   FROM dart_ods.ods_edw_fin_hosp_transact t1
-   WHERE t1.ORIG_LATE_CHG_COR_TRANSACT_ID IS NOT NULL
-  ) t13 ON t1.TRANSACT_ID = t13.ORIG_LATE_CHG_COR_TRANSACT_ID AND t1.CPT = t13.CPT
-  LEFT JOIN
-  (SELECT
-     t1.ORIG_LATE_CHG_CRED_TRANSACT_ID,
-     t1.CPT
-   FROM dart_ods.ods_edw_fin_hosp_transact t1
-   WHERE t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL
-  ) t14 ON t1.TRANSACT_ID = t14.ORIG_LATE_CHG_CRED_TRANSACT_ID AND t1.CPT = t14.CPT
+  ) t12 ON t1.TRANSACT_ID = t12.ORIG_REVRSE_TRANSACT_ID
+
 WHERE
-  t1.TRANSACT_ID IS NOT NULL
-  AND t1.ORIG_REVRSE_TRANSACT_ID IS NULL
-  AND t1.ORIG_LATE_CHG_COR_TRANSACT_ID IS NULL
-  AND t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NULL
-;
+  t1.TRANSACT_ID IS NOT NULL AND t1.BILL_PROV_ID IS NOT NULL
+
+
+
+LEFT JOIN
+( SELECT
+t1.ORIG_LATE_CHG_COR_TRANSACT_ID,
+t1.CPT
+FROM dart_ods.ods_edw_fin_hosp_transact t1
+WHERE t1.ORIG_LATE_CHG_COR_TRANSACT_ID IS NOT NULL
+) t13 ON t1.TRANSACT_ID = t13.ORIG_LATE_CHG_COR_TRANSACT_ID AND t1.CPT = t13.CPT
+LEFT JOIN
+( SELECT
+t1.ORIG_LATE_CHG_CRED_TRANSACT_ID,
+t1.CPT
+FROM dart_ods.ods_edw_fin_hosp_transact t1
+WHERE t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL
+) t14 ON t1.TRANSACT_ID = t14.ORIG_LATE_CHG_CRED_TRANSACT_ID AND t1.CPT = t14.CPT
+WHERE
+t1.TRANSACT_ID IS NOT NULL
+AND t1.ORIG_REVRSE_TRANSACT_ID IS NULL
+AND t1.ORIG_LATE_CHG_COR_TRANSACT_ID IS NULL
+AND t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NULL;
