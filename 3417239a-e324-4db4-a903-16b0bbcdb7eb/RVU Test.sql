@@ -11,27 +11,21 @@ SELECT
   t5.prov_dx_grp_dv        AS diseasecenter,
   t5.prov_dx_site_dv       AS site,
   t5.PROV_INT_EXT_IND_DV   AS int_ext_flag,
-  CASE WHEN t12.ORIG_REVRSE_TRANSACT_ID IS NOT NULL
+  CASE WHEN t12.ORIG_REVRSE_TRANSACT_ID IS NOT NULL OR t1.ORIG_REVRSE_TRANSACT_ID IS NOT NULL
     THEN 0
-  WHEN t14.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL AND t13.ORIG_LATE_CHG_COR_TRANSACT_ID IS NULL
+  WHEN t13.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL OR t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL
     THEN 0
-  WHEN t14.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL AND t13.ORIG_LATE_CHG_COR_TRANSACT_ID IS NOT NULL
-    THEN 1
-  ELSE 1 END               AS servicequantity,
-  CASE WHEN t12.ORIG_REVRSE_TRANSACT_ID IS NOT NULL
+  WHEN t1.HOSP_ACCT_CLS_DESCR = 'INPATIENT'
     THEN 0
-  WHEN t14.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL AND t13.ORIG_LATE_CHG_COR_TRANSACT_ID IS NULL
-    THEN 0
-  WHEN t14.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL AND t13.ORIG_LATE_CHG_COR_TRANSACT_ID IS NOT NULL
-    THEN t1.TRANSACT_CNT
-  ELSE t1.TRANSACT_CNT END AS transactionquantity,
+    WHEN t14.EPIC_PATIENT_ID IS NOT NULL THEN  0
+  ELSE 1 END AS Service_Qty,
   t10.rvu,
   t11.distrib_pct          AS cfte,
   t1.svc_dttm              AS service_dt,
   t2.pt_dfci_mrn           AS dfci_mrn,
   t2.pt_bwh_mrn            AS bwh_mrn,
-  CASE WHEN t3.pt_last_nm IS NOT NULL
-    THEN t3.pt_last_nm || ',' || t3.pt_first_nm || ' ' || t3.pt_middle_nm
+  CASE WHEN t2.pt_last_nm IS NOT NULL
+    THEN t2.pt_last_nm || ',' || t2.pt_first_nm
   ELSE NULL
   END                      AS patient_nm,
   t6.super_prov_id         AS supervisingprov_id,
@@ -45,7 +39,6 @@ SELECT
 FROM dart_ods.ods_edw_fin_hosp_transact t1
   LEFT JOIN dart_adm.ds_cpt_adj@dartprd t12 ON t1.proc_id = t12.proc_cd
   LEFT JOIN dart_ods.mv_coba_pt_enc t2 ON t1.pt_enc_id = t2.enc_id_csn
-  LEFT JOIN dart_ods.mv_coba_pt t3 ON t2.pt_id = t3.pt_id
   LEFT JOIN dartedm.d_cpt_cd@dartprd t4 ON t1.cpt = t4.cpt_cd
   LEFT JOIN dart_ods.mv_coba_prov t5 ON t1.bill_prov_id = t5.prov_id
   LEFT JOIN dart_ods.ods_edw_enc_pt_enc_02 t6 ON t1.pt_enc_id = t6.pt_enc_id
@@ -106,37 +99,100 @@ FROM dart_ods.ods_edw_fin_hosp_transact t1
                 prov.epic_prov_id,
                 login.opr_id
               ORDER BY prov.epic_prov_id
-            ) t11 ON
-                    t1.bill_prov_id = t11.epic_prov_id
-                    AND
-                    EXTRACT(YEAR FROM t1.svc_dttm) = t11.academic_yr
-  LEFT JOIN
-  (SELECT t1.ORIG_REVRSE_TRANSACT_ID
-   FROM dart_ods.ods_edw_fin_hosp_transact t1
-   WHERE t1.ORIG_REVRSE_TRANSACT_ID IS NOT NULL
-  ) t12 ON t1.TRANSACT_ID = t12.ORIG_REVRSE_TRANSACT_ID
+            ) t11 ON t1.bill_prov_id = t11.epic_prov_id AND EXTRACT(YEAR FROM t1.svc_dttm) = t11.academic_yr
+ LEFT JOIN (SELECT t1.ORIG_REVRSE_TRANSACT_ID
+             FROM dart_ods.ods_edw_fin_hosp_transact t1
+            ) t12 ON t1.TRANSACT_ID = t12.ORIG_REVRSE_TRANSACT_ID
+  LEFT JOIN (SELECT t1.ORIG_LATE_CHG_CRED_TRANSACT_ID
+             FROM dart_ods.ods_edw_fin_hosp_transact t1
+            ) t13 ON t1.TRANSACT_ID = t13.ORIG_LATE_CHG_CRED_TRANSACT_ID
+  LEFT JOIN (SELECT DISTINCT
+               t1.ACCT_CLASS_NM,
+               t1.SERVICE_DT_DIM_SEQ,
+               t5.CALENDAR_DT,
+               t1.TXN_TYPE_NM,
+               t2.EPIC_PROV_ID,
+               t4.EPIC_PATIENT_ID
+             FROM dartedm.f_patient_service@dartprd t1
+               LEFT JOIN dartedm.D_PROV@dartprd t2 ON t1.PROV_DIM_SEQ = t2.PROV_DIM_SEQ
+               LEFT JOIN dartedm.D_Patient@dartprd t4 ON t1.PATIENT_DIM_SEQ = t4.PATIENT_DIM_SEQ
+               LEFT JOIN dartedm.D_CALENDAR@dartprd t5 ON t1.SERVICE_DT_DIM_SEQ = t5.CALENDAR_DIM_SEQ
+             WHERE t1.TXN_TYPE_NM = 'CHARGE' AND t1.ACCT_CLASS_NM = 'INPATIENT' AND t1.SERVICE_DT_DIM_SEQ > '20150530'
+  ) t14 ON t1.BILL_PROV_ID = t14.EPIC_PROV_ID AND t1.SVC_DTTM = t14.CALENDAR_DT AND t2.PT_ID = t14.EPIC_PATIENT_ID
+WHERE t1.BILL_PROV_ID IS NOT NULL AND t2.PT_ID IS NOT NULL;
 
+-----------------------------------------------------------------------------------------------
+SELECT
+  t1.TRANSACT_ID,
+  CASE WHEN t12.ORIG_REVRSE_TRANSACT_ID IS NOT NULL OR t1.ORIG_REVRSE_TRANSACT_ID IS NOT NULL
+    THEN 0
+  WHEN t13.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL OR t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL
+    THEN 0
+  WHEN t1.HOSP_ACCT_CLS_DESCR = 'INPATIENT'
+    THEN 0
+    WHEN t14.EPIC_PATIENT_ID IS NOT NULL THEN  0
+  ELSE 1 END AS Service_Qty,
+  t1.CPT,
+  t1.HOSP_ACCT_ID,
+  t1.PT_ENC_ID,
+  t1.ORIG_REVRSE_TRANSACT_ID,
+  t1.ORIG_LATE_CHG_COR_TRANSACT_ID,
+  t1.ORIG_LATE_CHG_CRED_TRANSACT_ID,
+  t1.POST_DTTM,
+  t1.SVC_DTTM,
+  t1.TRANSACT_CNT,
+  t1.TRANSACT_AMT,
+  t1.HOSP_ACCT_CLS_DESCR,
+  t1.BILL_PROV_ID,
+  t2.PROV_NM,
+  t2.PROV_TYPE_DESCR,
+  t2.PROV_STATUS_CD,
+  t2.PROV_DX_TYPE_DV,
+  t2.PROV_INT_EXT_IND_DV,
+  t3.PT_ID,
+  t3.ENC_STATUS_DESCR,
+  t1.DEPT_DESCR
+FROM
+  dart_ods.ods_edw_fin_hosp_transact t1
+  LEFT JOIN dart_ods.MV_COBA_PROV t2 ON t1.BILL_PROV_ID = t2.PROV_ID
+  LEFT JOIN MV_COBA_PT_ENC t3 ON t1.PT_ENC_ID = t3.ENC_ID_CSN
+  LEFT JOIN (SELECT t1.ORIG_REVRSE_TRANSACT_ID
+             FROM dart_ods.ods_edw_fin_hosp_transact t1
+            ) t12 ON t1.TRANSACT_ID = t12.ORIG_REVRSE_TRANSACT_ID
+  LEFT JOIN (SELECT t1.ORIG_LATE_CHG_CRED_TRANSACT_ID
+             FROM dart_ods.ods_edw_fin_hosp_transact t1
+            ) t13 ON t1.TRANSACT_ID = t13.ORIG_LATE_CHG_CRED_TRANSACT_ID
+  LEFT JOIN (SELECT DISTINCT
+               t1.ACCT_CLASS_NM,
+               t1.SERVICE_DT_DIM_SEQ,
+               t5.CALENDAR_DT,
+               t1.TXN_TYPE_NM,
+               t2.EPIC_PROV_ID,
+               t4.EPIC_PATIENT_ID
+             FROM dartedm.f_patient_service@dartprd t1
+               LEFT JOIN dartedm.D_PROV@dartprd t2 ON t1.PROV_DIM_SEQ = t2.PROV_DIM_SEQ
+               LEFT JOIN dartedm.D_Patient@dartprd t4 ON t1.PATIENT_DIM_SEQ = t4.PATIENT_DIM_SEQ
+               LEFT JOIN dartedm.D_CALENDAR@dartprd t5 ON t1.SERVICE_DT_DIM_SEQ = t5.CALENDAR_DIM_SEQ
+             WHERE t1.TXN_TYPE_NM = 'CHARGE' AND t1.ACCT_CLASS_NM = 'INPATIENT' AND t1.SERVICE_DT_DIM_SEQ > '20150530'
+  ) t14 ON t1.BILL_PROV_ID = t14.EPIC_PROV_ID AND t1.SVC_DTTM = t14.CALENDAR_DT AND t3.PT_ID = t14.EPIC_PATIENT_ID
+WHERE t1.BILL_PROV_ID = '1005955'
+      AND t1.CPT = '99205'
+      AND EXTRACT(YEAR FROM t1.SVC_DTTM) = 2017
+      AND EXTRACT(MONTH FROM t1.SVC_DTTM) = 12;
+
+SELECT
+  t1.*,
+  t5.CALENDAR_DT,
+  t1.TXN_TYPE_NM,
+  t2.EPIC_PROV_ID,
+  t4.EPIC_PATIENT_ID
+FROM dartedm.f_patient_service@dartprd t1
+  LEFT JOIN dartedm.D_PROV@dartprd t2 ON t1.PROV_DIM_SEQ = t2.PROV_DIM_SEQ
+  LEFT JOIN dartedm.D_PROC@dartprd t3 ON t1.PROC_DIM_SEQ = t3.PROC_DIM_SEQ
+  LEFT JOIN dartedm.D_Patient@dartprd t4 ON t1.PATIENT_DIM_SEQ = t4.PATIENT_DIM_SEQ
+  LEFT JOIN dartedm.D_CALENDAR@dartprd t5 ON t1.SERVICE_DT_DIM_SEQ = t5.CALENDAR_DIM_SEQ
 WHERE
-  t1.TRANSACT_ID IS NOT NULL AND t1.BILL_PROV_ID IS NOT NULL
+  t2.EPIC_PROV_ID = '1005955'
+--   AND t1.TXN_TYPE_NM = 'CHARGE' AND t1.ACCT_CLASS_NM = 'INPATIENT'
+  AND t1.SERVICE_DT_DIM_SEQ > '20171201' AND t1.SERVICE_DT_DIM_SEQ < '20171231' AND t3.CPT_CD = '99205'
 
-
-
-LEFT JOIN
-( SELECT
-t1.ORIG_LATE_CHG_COR_TRANSACT_ID,
-t1.CPT
-FROM dart_ods.ods_edw_fin_hosp_transact t1
-WHERE t1.ORIG_LATE_CHG_COR_TRANSACT_ID IS NOT NULL
-) t13 ON t1.TRANSACT_ID = t13.ORIG_LATE_CHG_COR_TRANSACT_ID AND t1.CPT = t13.CPT
-LEFT JOIN
-( SELECT
-t1.ORIG_LATE_CHG_CRED_TRANSACT_ID,
-t1.CPT
-FROM dart_ods.ods_edw_fin_hosp_transact t1
-WHERE t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NOT NULL
-) t14 ON t1.TRANSACT_ID = t14.ORIG_LATE_CHG_CRED_TRANSACT_ID AND t1.CPT = t14.CPT
-WHERE
-t1.TRANSACT_ID IS NOT NULL
-AND t1.ORIG_REVRSE_TRANSACT_ID IS NULL
-AND t1.ORIG_LATE_CHG_COR_TRANSACT_ID IS NULL
-AND t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IS NULL;

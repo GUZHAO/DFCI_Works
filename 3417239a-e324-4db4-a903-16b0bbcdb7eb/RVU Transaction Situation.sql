@@ -208,3 +208,10 @@ SELECT
   t1.DEPT_DESCR
 FROM dart_ods.ods_edw_fin_hosp_transact t1
 WHERE t1.PT_ENC_ID = 3076070427;
+
+SELECT t1.ORIG_LATE_CHG_COR_TRANSACT_ID
+  FROM dart_ods.ods_edw_fin_hosp_transact t1
+WHERE t1.ORIG_LATE_CHG_CRED_TRANSACT_ID IN (
+  SELECT t1.ORIG_LATE_CHG_CRED_TRANSACT_ID
+  FROM dart_ods.ods_edw_fin_hosp_transact t1
+)
