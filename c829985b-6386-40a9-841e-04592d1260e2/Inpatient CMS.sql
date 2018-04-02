@@ -17,6 +17,8 @@ SELECT
   t1.CPT                  AS CPT_Name,
   t1.DiagnosisTest,
   t6.ScannedDTS,
+  CASE WHEN DATEDIFF(DAY, t6.ScannedDTS, t1.StartDTS) = 0 THEN DATEDIFF(MINUTE, t6.ScannedDTS, t1.StartDTS)
+    ELSE DATEDIFF(DAY, t6.ScannedDTS, t1.StartDTS) END AS ConsentFlag_Test,
   t6.ConsentFlag,
   t8.HPFlag,
   t8.ServiceDTS           AS HP_ServiceDTS,
@@ -51,7 +53,7 @@ FROM (
                                 t1.ProcedureDSC LIKE '%ECG%' OR
                                 t1.ProcedureDSC LIKE '%ELECTROCARDIOGRAM%' OR
                                 t1.ProcedureDSC LIKE '%TTE%' OR
-                                t1.ProcedureDSC LIKE '%CATHETERIZATION%' OR --check
+                                t1.ProcedureDSC LIKE '%CATHETERIZATION%' OR
                                 t1.ProcedureDSC LIKE '%PULMONARY%FUNCTION%TEST%' OR
                                 t1.ProcedureDSC LIKE '%XR%CHEST%'
                         THEN 'Y'

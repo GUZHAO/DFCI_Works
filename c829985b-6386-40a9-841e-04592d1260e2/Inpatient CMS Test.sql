@@ -182,3 +182,8 @@ WHERE t2.OrderingModeDSC = 'Inpatient' AND (t1.ProcedureDSC LIKE '%EKG%' OR
                                             t1.ProcedureDSC LIKE '%CATHETERIZATION%' OR
                                             t1.ProcedureDSC LIKE '%PULMONARY%FUNCTION%TEST%' OR
                                             t1.ProcedureDSC LIKE '%XR%CHEST%')
+
+
+SELECT DISTINCT
+  t1.InpatientNoteTypeDSC
+FROM Epic.Clinical.Note_DFCI t1
